@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: fuzz decimal parsing
+        run: go test -run '^$' -fuzz FuzzParseFormatRoundTrip -fuzztime 30s ./internal/money/
+
+  generator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - working-directory: tools
+        run: python -m unittest discover -s apexgen/tests -t . -v
+
+  schema:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: apex
+          POSTGRES_PASSWORD: apex
+          POSTGRES_DB: apex
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U apex -d apex"
+          --health-interval 2s
+          --health-retries 30
+    env:
+      DB_URL: postgres://apex:apex@localhost:5432/apex?sslmode=disable
+      PGPASSWORD: apex
+    steps:
+      - uses: actions/checkout@v4
+      - name: migrate up, down and up again
+        run: |
+          migrate() { docker run --rm --network host -v "$PWD/migrations:/migrations:ro" migrate/migrate:v4.18.1 -path /migrations -database "$DB_URL" "$@"; }
+          migrate up
+          migrate down -all
+          migrate up
+      - name: audit rules
+        run: psql -h localhost -U apex -d apex -q -v ON_ERROR_STOP=1 -f tests/sql/break_audit_test.sql
