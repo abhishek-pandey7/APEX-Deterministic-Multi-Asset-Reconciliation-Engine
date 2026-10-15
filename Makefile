@@ -1,4 +1,4 @@
-.PHONY: test race vet check db-up db-down db-reset db-test psql
+.PHONY: test race vet check gen gen-test db-up db-down db-reset db-test psql
 
 test:
 	go test ./...
@@ -9,7 +9,13 @@ race:
 vet:
 	go vet ./...
 
-check: vet race
+check: vet race gen-test
+
+gen:
+	cd tools && python -m apexgen --out ../data/small --seed 42
+
+gen-test:
+	cd tools && python -m unittest discover -s apexgen/tests -t .
 
 db-up:
 	docker compose up -d db
