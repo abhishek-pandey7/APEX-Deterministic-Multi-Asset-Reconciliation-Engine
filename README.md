@@ -19,8 +19,8 @@ difference into a break an operations analyst can resolve.
 | Fixed-point money (`internal/money`) | Done: ISO 4217 exponents, float-free parsing, half-even market value, fuzz tested |
 | Postgres schema (`migrations/`) | Done: ingestion, runs, matches, breaks, append-only audit, job queue |
 | Synthetic data (`tools/apexgen`) | Done: 11 cash and 8 position scenarios with ground truth |
-| Ingestion | Next |
-| Matching engine (exact, tolerance, N-to-M, fuzzy) | Planned |
+| Ingestion (`internal/ingest`, `cmd/apex`) | Done: layouts per source, row validation, file hashing, COPY loading |
+| Matching engine (exact, tolerance, N-to-M, fuzzy) | Next |
 | Position reconciliation | Planned |
 | API, SSE and UI | Planned |
 | AI break worker | Planned |
@@ -34,14 +34,22 @@ make db-up          # Postgres + migrations
 make db-test        # audit rule tests in SQL
 make check          # go vet, go test -race, generator tests
 make gen            # data/small: about 22k cash rows with truth files
+make load           # ingest data/small into Postgres
+make test-int       # tests against generated data and the database
 ```
+
+The database listens on host port 55432, so it doesn't collide with a local Postgres.
 
 Without `make`, see the [Makefile](Makefile) for the underlying commands.
 
 ## Layout
 
 ```
+cmd/apex/           command-line entry point (apex ingest, apex layouts)
+internal/domain/    normalised cash entries and positions
+internal/ingest/    file layouts and parsing
 internal/money/     fixed-point amounts, quantities, prices
+internal/store/     Postgres persistence
 migrations/         versioned Postgres schema (golang-migrate)
 tests/sql/          database-level tests
 tools/apexgen/      synthetic data generator (Python, stdlib only)

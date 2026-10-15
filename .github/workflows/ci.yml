@@ -13,8 +13,16 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: generate test data
+        working-directory: tools
+        run: python -m apexgen --out ../data/small --seed 42
       - run: go vet ./...
       - run: go test -race ./...
+        env:
+          APEX_TEST_DATA: ${{ github.workspace }}/data/small
       - name: fuzz decimal parsing
         run: go test -run '^$' -fuzz FuzzParseFormatRoundTrip -fuzztime 30s ./internal/money/
 
@@ -55,3 +63,10 @@ jobs:
           migrate up
       - name: audit rules
         run: psql -h localhost -U apex -d apex -q -v ON_ERROR_STOP=1 -f tests/sql/break_audit_test.sql
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: store integration tests
+        run: go test ./internal/store/
+        env:
+          APEX_TEST_DB_URL: ${{ env.DB_URL }}
