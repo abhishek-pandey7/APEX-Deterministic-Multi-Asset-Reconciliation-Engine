@@ -20,7 +20,8 @@ difference into a break an operations analyst can resolve.
 | Postgres schema (`migrations/`) | Done: ingestion, runs, matches, breaks, append-only audit, job queue |
 | Synthetic data (`tools/apexgen`) | Done: 11 cash and 8 position scenarios with ground truth |
 | Ingestion (`internal/ingest`, `cmd/apex`) | Done: layouts per source, row validation, file hashing, COPY loading |
-| Matching engine (exact, tolerance, N-to-M, fuzzy) | Next |
+| Matching engine (`internal/match`) | Exact and tolerance phases done; N-to-M and fuzzy next |
+| Evaluation (`internal/eval`, `apex eval`) | Done: scores runs against ground truth, CI quality gate |
 | Position reconciliation | Planned |
 | API, SSE and UI | Planned |
 | AI break worker | Planned |
@@ -36,18 +37,36 @@ make check          # go vet, go test -race, generator tests
 make gen            # data/small: about 22k cash rows with truth files
 make load           # ingest data/small into Postgres
 make test-int       # tests against generated data and the database
+make eval           # match data/small and score it against the truth file
 ```
 
 The database listens on host port 55432, so it doesn't collide with a local Postgres.
 
 Without `make`, see the [Makefile](Makefile) for the underlying commands.
 
+## Results so far
+
+`apex eval` on the 770k-row medium dataset (seed 42), exact and tolerance phases only:
+
+| | |
+|---|---|
+| Throughput | about 2M rows/s on 16 workers |
+| Wrong auto matches | 0 of 320,456 |
+| Recovered: exact, timing (1–2 business days), rounding (≤ 0.99) | 100% |
+| Breaks left open: missing on either side, amount mismatch | 99.6–100% |
+| Not yet recovered: splits, netting, many-to-many, mangled references | 0% (N-to-M and fuzzy phases) |
+
+Every run is checked for determinism: the same data, shuffled and matched on one worker, must
+produce the same result hash.
+
 ## Layout
 
 ```
-cmd/apex/           command-line entry point (apex ingest, apex layouts)
+cmd/apex/           command-line entry point (apex ingest, apex eval, apex layouts)
 internal/domain/    normalised cash entries and positions
+internal/eval/      scoring against ground truth
 internal/ingest/    file layouts and parsing
+internal/match/     matching engine
 internal/money/     fixed-point amounts, quantities, prices
 internal/store/     Postgres persistence
 migrations/         versioned Postgres schema (golang-migrate)

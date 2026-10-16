@@ -141,6 +141,28 @@ Raw Levenshtein on full narratives (`"SETTLEMENT REF TRD2026000123 /XS..."` vs `
 performs badly. Extracting tokens first (section 2), then comparing the extracted ids exactly or with
 Jaro–Winkler, separates matches from non-matches far better.
 
+### Finding: compare identifiers by their digits, not by string similarity
+
+The first evaluation run auto-confirmed 99 wrong pairs. Nearly all were fees with standard
+amounts paired to a *neighbouring* fee: references are sequential, and Jaro–Winkler scores
+`FEE0000123` against `FEE0000124` around 0.9, as similar as a genuine typo.
+
+APEX therefore scores identifier-like tokens (four or more digits) on their digits:
+
+| Evidence | Score |
+|---|---|
+| Token equals the reference | 1000 |
+| One contains the other (truncated, prefix dropped, wrapped) | 950 |
+| Same digits apart from one adjacent swap, possibly after truncation | 900 |
+| Any other digit difference | at most 500 |
+
+A single *changed* digit is deliberately not forgiven, because that is exactly how neighbouring
+ids differ. Two thresholds then apply: a pair needs 950 to be auto-confirmed and 600 to be
+proposed at all. The remaining error after the digit rule was one pair whose ids, `18769` and
+`18679`, really are one swap apart; no similarity measure can separate that from a keying error,
+so swap-level evidence (900) now always goes to a human. Wrong auto matches: 99, then 1, then 0
+of 320,456 on the medium dataset.
+
 ### Combining evidence: Fellegi–Sunter
 
 The classical record-linkage model [2, 3] scores each field comparison by how much more likely the outcome
