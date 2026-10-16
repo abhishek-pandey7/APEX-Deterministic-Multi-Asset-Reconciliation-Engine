@@ -65,7 +65,34 @@ export type AuditEvent = {
   created_at: string;
 };
 
-export type BreakDetail = Break & { entries: Entry[]; history: AuditEvent[] };
+export type SimilarBreak = {
+  id: number;
+  run_id: number;
+  category: string;
+  amount: string;
+  status: BreakStatus;
+  resolution: string | null;
+};
+
+export type Suggestion = {
+  id: number;
+  model: string;
+  category: string | null;
+  confidence: number | null;
+  explanation: string;
+  next_action: string;
+  action_detail: string;
+  latency_ms: number | null;
+  created_at: string;
+  similar: SimilarBreak[];
+};
+
+export type BreakDetail = Break & {
+  entries: Entry[];
+  history: AuditEvent[];
+  suggestions: Suggestion[];
+  suggestion_pending: boolean;
+};
 
 export type ProgressEvent = { stage: string; message: string; run_id?: number };
 
@@ -95,6 +122,8 @@ export const api = {
     return request<BreakPage>(`/api/runs/${runId}/breaks?${params}`);
   },
   breakDetail: (id: number) => request<BreakDetail>(`/api/breaks/${id}`),
+  requestSuggestion: (id: number) =>
+    request<{ job_id: number; already_queued: boolean }>(`/api/breaks/${id}/suggestions`, { method: "POST" }),
   startRun: () => request<{ job: string; events: string }>("/api/runs", { method: "POST" }),
   addEvent: (id: number, actor: string, status: BreakStatus, reason: string) =>
     request<AuditEvent>(`/api/breaks/${id}/events`, {

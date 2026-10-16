@@ -25,3 +25,4 @@ after the fact; a changed decision gets a new record that supersedes the old one
 | [0017](0017-runs-as-reproducible-snapshots.md) | Runs stored as reproducible snapshots | Accepted |
 | [0018](0018-standard-library-http-and-sse.md) | Standard-library HTTP API with SSE progress | Accepted |
 | [0019](0019-web-ui.md) | A React single-page app served by the Go binary | Accepted |
+| [0020](0020-ai-worker.md) | An on-demand AI worker: hashed similarity vectors and schema-bound suggestions | Accepted |

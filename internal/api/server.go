@@ -44,6 +44,7 @@ func (s *Server) Handler(ui http.Handler) http.Handler {
 	mux.HandleFunc("GET /api/jobs/{id}/events", s.jobEvents)
 	mux.HandleFunc("GET /api/breaks/{id}", s.getBreak)
 	mux.HandleFunc("POST /api/breaks/{id}/events", s.addBreakEvent)
+	mux.HandleFunc("POST /api/breaks/{id}/suggestions", s.requestSuggestion)
 	if ui != nil {
 		mux.Handle("/", ui)
 	}
@@ -200,6 +201,21 @@ func (s *Server) addBreakEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, e)
+}
+
+// requestSuggestion queues an advisory AI suggestion for a break; the Python worker in
+// tools/apexai writes it, and it appears in the break's detail when ready.
+func (s *Server) requestSuggestion(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	job, existing, err := s.store.RequestSuggestion(r.Context(), id)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"job_id": job, "already_queued": existing})
 }
 
 func (s *Server) fail(w http.ResponseWriter, err error) {

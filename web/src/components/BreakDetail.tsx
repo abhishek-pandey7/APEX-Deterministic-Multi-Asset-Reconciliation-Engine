@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, type BreakDetail as Detail, type BreakStatus, type Entry } from "../api";
-import { categoryHelp, categoryName, shortTime, statusName } from "../vocabulary";
+import { api, ApiError, type BreakDetail as Detail, type BreakStatus, type Entry, type Suggestion } from "../api";
+import { actionName, categoryHelp, categoryName, shortTime, statusName } from "../vocabulary";
 
 type Action = { label: string; to: BreakStatus; needsReason?: boolean; quiet?: boolean };
 
@@ -28,11 +28,20 @@ function actionsFor(b: Detail, actor: string): Action[] {
   }
 }
 
-type Props = { id: number; actor: string; onClose: () => void };
+type Props = { id: number; actor: string; onClose: () => void; onOpen: (id: number) => void };
 
-export function BreakDetail({ id, actor, onClose }: Props) {
+export function BreakDetail({ id, actor, onClose, onOpen }: Props) {
   const client = useQueryClient();
-  const detail = useQuery({ queryKey: ["break", id], queryFn: () => api.breakDetail(id) });
+  const detail = useQuery({
+    queryKey: ["break", id],
+    queryFn: () => api.breakDetail(id),
+    // While the AI worker prepares a suggestion, check back every 1.5 s.
+    refetchInterval: (q) => (q.state.data?.suggestion_pending ? 1500 : false),
+  });
+  const ask = useMutation({
+    mutationFn: () => api.requestSuggestion(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["break", id] }),
+  });
   const [reason, setReason] = useState("");
   const [pending, setPending] = useState<Action | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -99,6 +108,14 @@ export function BreakDetail({ id, actor, onClose }: Props) {
 
             <TAccount ledger={ledger} custodian={custodian} difference={b.amount} differs={b.amount_minor !== 0} />
             {categoryHelp[b.category] && <p className="-mt-5 text-sm text-ink-soft">{categoryHelp[b.category]}</p>}
+
+            <SuggestionPanel
+              detail={b}
+              asking={ask.isPending}
+              failed={ask.isError}
+              onAsk={() => ask.mutate()}
+              onOpen={onOpen}
+            />
 
             <section aria-labelledby="actions-title">
               <h3 id="actions-title" className="font-semibold">
@@ -189,6 +206,98 @@ export function BreakDetail({ id, actor, onClose }: Props) {
         )}
       </section>
     </div>
+  );
+}
+
+// The AI suggestion is advisory: it sits beside the break and changes nothing until a person
+// acts on it through the normal workflow.
+function SuggestionPanel({
+  detail,
+  asking,
+  failed,
+  onAsk,
+  onOpen,
+}: {
+  detail: Detail;
+  asking: boolean;
+  failed: boolean;
+  onAsk: () => void;
+  onOpen: (id: number) => void;
+}) {
+  const latest: Suggestion | undefined = detail.suggestions[0];
+  const waiting = asking || detail.suggestion_pending;
+  return (
+    <section aria-labelledby="suggestion-title" className="rounded-md border border-rule p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 id="suggestion-title" className="font-semibold">
+          Suggestion
+        </h3>
+        <button
+          type="button"
+          onClick={onAsk}
+          disabled={waiting}
+          className="rounded border border-rule px-3 py-1 text-sm hover:bg-paper disabled:opacity-50"
+        >
+          {waiting ? "Preparing a suggestion" : latest ? "Ask again" : "Ask for a suggestion"}
+        </button>
+      </div>
+
+      {!latest && !waiting && (
+        <p className="mt-1 text-sm text-ink-soft">
+          Get a likely explanation, a next step and similar past breaks. It changes nothing on its own.
+        </p>
+      )}
+      {waiting && !latest && (
+        <p className="mt-1 text-sm text-ink-soft" aria-live="polite">
+          The AI worker is reading this break. If nothing appears, start it with <code>make worker</code>.
+        </p>
+      )}
+      {failed && <p className="mt-1 text-sm text-diff">The request could not be queued. Check the API is running.</p>}
+
+      {latest && (
+        <div className="mt-3 space-y-3">
+          <p className="text-[1.05rem] font-semibold">{actionName[latest.next_action] ?? latest.next_action}</p>
+          <p className="max-w-prose leading-relaxed">{latest.explanation}</p>
+          {latest.action_detail && <p className="max-w-prose text-sm">{latest.action_detail}</p>}
+          {latest.category && latest.category !== detail.category && (
+            <p className="text-sm text-diff">
+              The model reads this as {categoryName[latest.category]?.toLowerCase() ?? latest.category}, not{" "}
+              {categoryName[detail.category]?.toLowerCase()}. The engine's category stands until someone changes it.
+            </p>
+          )}
+          <p className="text-xs text-ink-soft">
+            {latest.model === "rules" ? "From standard rules, no language model" : `From ${latest.model}`}
+            {latest.confidence !== null && `, ${latest.confidence}% confident`}
+            {latest.latency_ms !== null && `, ${(latest.latency_ms / 1000).toFixed(1)} s`}
+            {`, ${shortTime(latest.created_at)}`}. Advisory only.
+          </p>
+
+          {latest.similar.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold">Similar breaks</h4>
+              <ul className="mt-1 divide-y divide-rule-soft text-sm">
+                {latest.similar.map((sb) => (
+                  <li key={sb.id}>
+                    <button
+                      type="button"
+                      onClick={() => onOpen(sb.id)}
+                      className="flex w-full flex-wrap justify-between gap-x-4 py-1.5 text-left hover:bg-paper"
+                    >
+                      <span>
+                        Break {sb.id}, run {sb.run_id}: {categoryName[sb.category] ?? sb.category}
+                        <span className="text-ink-soft">, {statusName[sb.status].toLowerCase()}</span>
+                      </span>
+                      <span className="figures text-ink-soft">{sb.amount}</span>
+                      {sb.resolution && <span className="w-full text-ink-soft">Resolved: {sb.resolution}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 

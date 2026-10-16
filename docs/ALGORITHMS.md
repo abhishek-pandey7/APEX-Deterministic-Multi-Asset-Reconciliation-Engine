@@ -260,8 +260,10 @@ The AI worker handles what rules can't:
 
 1. **Classification** into the break taxonomy, as structured output with a confidence value.
 2. **Explanation** in plain language, plus a suggested action (a booking or a custodian query).
-3. **Similar past breaks**: an embedding of the break's features and narrative, searched with pgvector
-   (HNSW index, cosine distance), showing how analysts resolved the closest past cases.
+3. **Similar past breaks**: a 64-dimension feature vector (category, magnitude, direction, number of
+   entries per side, reference vocabulary without id digits) built with the signed hashing trick over
+   SHA-256, searched with pgvector (HNSW index, cosine distance), with resolved breaks shown first.
+   A deterministic vector was chosen over a text-embedding model; see ADR 0020.
 
 The AI layer reads breaks and writes suggestions. It never changes match state (see ARCHITECTURE.md).
 

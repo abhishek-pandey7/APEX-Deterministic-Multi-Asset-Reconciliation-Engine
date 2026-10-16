@@ -101,7 +101,13 @@ func Run(ctx context.Context, st *store.Store, cfg match.Config, fileIDs []int64
 	if err = st.FinishRun(ctx, runID, sum, hash); err != nil {
 		return sum, err
 	}
-	progress(Event{Stage: "done", RunID: runID, Message: fmt.Sprintf("run %d finished in %d ms", runID, sum.DurationMS)})
+	// Similarity vectors are prepared in the background by the AI worker. A failure here doesn't
+	// fail the run: the worker also vectorizes a break on demand when a suggestion is requested.
+	done := fmt.Sprintf("run %d finished in %d ms", runID, sum.DurationMS)
+	if _, qerr := st.EnqueueJob(ctx, "vectorize_run", map[string]int64{"run_id": runID}); qerr != nil {
+		done += "; similarity vectors not queued: " + qerr.Error()
+	}
+	progress(Event{Stage: "done", RunID: runID, Message: done})
 	return sum, nil
 }
 

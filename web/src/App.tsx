@@ -95,7 +95,7 @@ export default function App() {
       )}
 
       {openBreak !== null && (
-        <BreakDetail id={openBreak} actor={actor} onClose={() => setOpenBreak(null)} />
+        <BreakDetail id={openBreak} actor={actor} onClose={() => setOpenBreak(null)} onOpen={setOpenBreak} />
       )}
     </div>
   );

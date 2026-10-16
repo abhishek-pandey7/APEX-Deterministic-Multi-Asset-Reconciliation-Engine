@@ -49,3 +49,12 @@ export function shortTime(iso: string) {
     minute: "2-digit",
   });
 }
+
+export const actionName: Record<string, string> = {
+  BOOK_ENTRY: "Book the missing entry",
+  QUERY_CUSTODIAN: "Query the custodian",
+  WAIT_FOR_SETTLEMENT: "Wait for settlement",
+  WRITE_OFF: "Write off the difference",
+  CANCEL_DUPLICATE: "Have the duplicate cancelled",
+  INVESTIGATE: "Investigate",
+};

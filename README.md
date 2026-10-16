@@ -27,7 +27,7 @@ difference into a break an operations analyst can resolve.
 | Evaluation (`internal/eval`, `apex eval`) | Done: scores runs against ground truth, CI quality gate |
 | Position reconciliation | Planned |
 | Web UI (`web/`) | Done: break queue, T-account detail, review workflow, live run progress |
-| AI break worker | Planned |
+| AI break worker (`tools/apexai`) | Done: similar past breaks with pgvector, advisory suggestions from Groq, injection screen |
 
 ## Quick start
 
@@ -42,6 +42,8 @@ make load           # ingest data/small into Postgres
 make run            # reconcile everything loaded and store the run
 make web            # build the UI (needs Node)
 make serve          # UI and API on localhost:8080
+make ai-setup       # Python environment for the AI worker
+make worker         # AI worker: similarity vectors and suggestions (GROQ_API_KEY in .env, optional)
 make test-int       # tests against generated data and the database
 make eval           # match data/small and score it against the truth file
 ```
@@ -82,6 +84,7 @@ for determinism: the same data, shuffled and matched on one worker, must hash th
 | `GET /api/runs/{id}/breaks` | One page of breaks, filtered by `category`, `status`, `account`, plus counts |
 | `GET /api/breaks/{id}` | A break with its entries and full audit history |
 | `POST /api/breaks/{id}/events` | Move a break through the workflow (`{"status": "PROPOSED", "reason": "..."}`), acting as the `X-Actor` header |
+| `POST /api/breaks/{id}/suggestions` | Ask the AI worker for an advisory suggestion; it appears in the break's detail |
 
 Invalid transitions and self-approvals are refused by the database's own triggers and come back
 as `409`, so no client, including this API, can skip the four-eyes check.
@@ -106,6 +109,7 @@ migrations/         versioned Postgres schema (golang-migrate)
 tests/sql/          database-level tests
 tools/apexgen/      synthetic data generator (Python, stdlib only)
 web/                React UI, served by apex serve once built
+tools/apexai/       AI worker: similar breaks and advisory suggestions (Python)
 docs/               architecture and algorithm research
 ```
 

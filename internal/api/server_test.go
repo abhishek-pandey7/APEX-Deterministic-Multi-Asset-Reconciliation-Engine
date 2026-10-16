@@ -89,6 +89,23 @@ func TestReviewWorkflow(t *testing.T) {
 		t.Errorf("detail = %+v", detail)
 	}
 
+	// Asking twice for a suggestion queues one job, and the break shows it as pending.
+	var first, second struct {
+		JobID         int64 `json:"job_id"`
+		AlreadyQueued bool  `json:"already_queued"`
+	}
+	sugPath := fmt.Sprintf("/api/breaks/%d/suggestions", b.ID)
+	call(t, srv, "POST", sugPath, "", nil, http.StatusAccepted, &first)
+	call(t, srv, "POST", sugPath, "", nil, http.StatusAccepted, &second)
+	if first.JobID == 0 || first.AlreadyQueued || second.JobID != first.JobID || !second.AlreadyQueued {
+		t.Errorf("suggestion requests: first %+v, second %+v", first, second)
+	}
+	call(t, srv, "GET", fmt.Sprintf("/api/breaks/%d", b.ID), "", nil, http.StatusOK, &detail)
+	if !detail.SuggestionPending || len(detail.Suggestions) != 0 {
+		t.Errorf("pending=%v suggestions=%d", detail.SuggestionPending, len(detail.Suggestions))
+	}
+	call(t, srv, "POST", "/api/breaks/999999999/suggestions", "", nil, http.StatusNotFound, nil)
+
 	call(t, srv, "GET", "/api/breaks/999999999", "", nil, http.StatusNotFound, nil)
 	call(t, srv, "GET", "/api/jobs/nope/events", "", nil, http.StatusNotFound, nil)
 }

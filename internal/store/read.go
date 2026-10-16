@@ -176,8 +176,11 @@ type Event struct {
 
 type BreakDetail struct {
 	Break
-	Entries []Leg   `json:"entries"`
-	History []Event `json:"history"`
+	Entries     []Leg        `json:"entries"`
+	History     []Event      `json:"history"`
+	Suggestions []Suggestion `json:"suggestions"`
+	// SuggestionPending is true while the AI worker is preparing a suggestion for this break.
+	SuggestionPending bool `json:"suggestion_pending"`
 }
 
 func (s *Store) GetBreak(ctx context.Context, id int64) (BreakDetail, error) {
@@ -230,6 +233,10 @@ func (s *Store) GetBreak(ctx context.Context, id int64) (BreakDetail, error) {
 		return d, err
 	}
 	d.History, err = pgx.CollectRows(events, pgx.RowToStructByPos[Event])
+	if err != nil {
+		return d, err
+	}
+	d.Suggestions, d.SuggestionPending, err = s.suggestions(ctx, id)
 	return d, err
 }
 
