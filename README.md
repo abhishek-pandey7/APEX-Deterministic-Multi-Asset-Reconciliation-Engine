@@ -26,12 +26,12 @@ difference into a break an operations analyst can resolve.
 | HTTP API (`internal/api`, `apex serve`) | Done: runs, live progress over SSE, break review workflow |
 | Evaluation (`internal/eval`, `apex eval`) | Done: scores runs against ground truth, CI quality gate |
 | Position reconciliation | Planned |
-| Web UI | Next |
+| Web UI (`web/`) | Done: break queue, T-account detail, review workflow, live run progress |
 | AI break worker | Planned |
 
 ## Quick start
 
-Needs Go, Python 3.12+ and Docker.
+Needs Go, Python 3.12+, Node 20+ and Docker.
 
 ```
 make db-up          # Postgres + migrations
@@ -40,7 +40,8 @@ make check          # go vet, go test -race, generator tests
 make gen            # data/small: about 22k cash rows with truth files
 make load           # ingest data/small into Postgres
 make run            # reconcile everything loaded and store the run
-make serve          # API on localhost:8080
+make web            # build the UI (needs Node)
+make serve          # UI and API on localhost:8080
 make test-int       # tests against generated data and the database
 make eval           # match data/small and score it against the truth file
 ```
@@ -104,6 +105,7 @@ internal/store/     Postgres persistence
 migrations/         versioned Postgres schema (golang-migrate)
 tests/sql/          database-level tests
 tools/apexgen/      synthetic data generator (Python, stdlib only)
+web/                React UI, served by apex serve once built
 docs/               architecture and algorithm research
 ```
 

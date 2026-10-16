@@ -94,7 +94,7 @@ func classifyPartition(ledger, custodian []domain.CashEntry, p *part, matchedLin
 	l := newSide(ledger, p.ledger, true)
 	c := newSide(custodian, p.custodian, false)
 	ccy, _ := money.LookupCurrency(p.key.currency)
-	amt := func(v int64) string { return money.FormatFixed(v, ccy.Exponent) + " " + ccy.Code }
+	amt := func(v int64) string { return money.FormatGrouped(v, ccy.Exponent) + " " + ccy.Code }
 
 	var out []Break
 	add := func(cat Category, lis, cis []int, reason string) {

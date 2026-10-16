@@ -24,3 +24,4 @@ after the fact; a changed decision gets a new record that supersedes the old one
 | [0016](0016-rules-before-ai.md) | Rule-based break classification; AI advisory only | Accepted |
 | [0017](0017-runs-as-reproducible-snapshots.md) | Runs stored as reproducible snapshots | Accepted |
 | [0018](0018-standard-library-http-and-sse.md) | Standard-library HTTP API with SSE progress | Accepted |
+| [0019](0019-web-ui.md) | A React single-page app served by the Go binary | Accepted |

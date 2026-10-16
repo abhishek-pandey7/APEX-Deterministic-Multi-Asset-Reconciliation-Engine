@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/*
+ * Colour carries meaning here, never decoration:
+ * steel blue is always the ledger, bronze always the custodian, red ink always a difference.
+ */
+@theme {
+  --font-sans: "Public Sans Variable", system-ui, sans-serif;
+
+  --color-paper: #eef1f3;
+  --color-sheet: #fbfcfc;
+  --color-ink: #1d2a36;
+  --color-ink-soft: #52606d;
+  --color-rule: #c9d1d8;
+  --color-rule-soft: #dfe5ea;
+  --color-ledger: #2f5d8a;
+  --color-ledger-wash: #e3ecf5;
+  --color-custodian: #7a5c2e;
+  --color-custodian-wash: #f3ece1;
+  --color-diff: #b4232c;
+  --color-diff-wash: #f8e4e5;
+  --color-settled: #2e7d5b;
+  --color-settled-wash: #e1f1e9;
+  --color-focus: #2f5d8a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #141c23;
+    --color-sheet: #1b252e;
+    --color-ink: #e4eaef;
+    --color-ink-soft: #9aa8b5;
+    --color-rule: #34424f;
+    --color-rule-soft: #26323c;
+    --color-ledger: #8fb6dc;
+    --color-ledger-wash: #1f3245;
+    --color-custodian: #d6b27a;
+    --color-custodian-wash: #3a2f1f;
+    --color-diff: #f08a90;
+    --color-diff-wash: #3d1f22;
+    --color-settled: #7cc9a4;
+    --color-settled-wash: #1c3a2d;
+    --color-focus: #8fb6dc;
+  }
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Amounts line up in columns, the way they do on a printed statement. */
+.figures {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

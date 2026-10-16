@@ -258,5 +258,5 @@ func formatAmount(minor int64, currency string) string {
 	if err != nil {
 		return ""
 	}
-	return money.FormatFixed(minor, ccy.Exponent) + " " + ccy.Code
+	return money.FormatGrouped(minor, ccy.Exponent) + " " + ccy.Code
 }

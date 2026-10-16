@@ -106,3 +106,24 @@ func FuzzParseFormatRoundTrip(f *testing.F) {
 		}
 	})
 }
+
+func TestFormatGrouped(t *testing.T) {
+	tests := []struct {
+		v     int64
+		scale uint8
+		want  string
+	}{
+		{0, 2, "0.00"},
+		{99999, 2, "999.99"},
+		{100000, 2, "1,000.00"},
+		{-436410876, 2, "-4,364,108.76"},
+		{1064269742, 3, "1,064,269.742"},
+		{1234567, 0, "1,234,567"},
+		{math.MinInt64, 0, "-9,223,372,036,854,775,808"},
+	}
+	for _, tt := range tests {
+		if got := FormatGrouped(tt.v, tt.scale); got != tt.want {
+			t.Errorf("FormatGrouped(%d, %d) = %q, want %q", tt.v, tt.scale, got, tt.want)
+		}
+	}
+}

@@ -66,7 +66,7 @@ func TestClassifyAmountBreakSign(t *testing.T) {
 	if len(b) != 1 || b[0].AmountMinor != -40_000 || b[0].OpenedOn != date("2026-10-12") {
 		t.Fatalf("got %+v, want one break of ledger minus custodian = -40000", b)
 	}
-	if !strings.Contains(b[0].Reason, "differs from the ledger 5000.00 USD by 400.00 USD") {
+	if !strings.Contains(b[0].Reason, "differs from the ledger 5,000.00 USD by 400.00 USD") {
 		t.Errorf("reason = %q", b[0].Reason)
 	}
 }

@@ -1,4 +1,4 @@
-.PHONY: test race vet check test-int load run serve eval gen gen-test db-up db-down db-reset db-test psql
+.PHONY: test race vet check test-int load run serve web eval gen gen-test db-up db-down db-reset db-test psql
 
 test:
 	go test ./...
@@ -21,6 +21,9 @@ run:
 
 serve:
 	go run ./cmd/apex serve
+
+web:
+	cd web && npm ci && npm run build
 
 eval:
 	go run ./cmd/apex eval -data data/small

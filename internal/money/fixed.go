@@ -100,3 +100,25 @@ func isDigits(s string) bool {
 	}
 	return true
 }
+
+// FormatGrouped is FormatFixed with thousands separators, for display only: "-1,234,567.89".
+// Machine-readable output keeps FormatFixed, which ParseFixed reads back.
+func FormatGrouped(v int64, scale uint8) string {
+	s := FormatFixed(v, scale)
+	sign := ""
+	if s[0] == '-' {
+		sign, s = "-", s[1:]
+	}
+	whole, frac, hasFrac := strings.Cut(s, ".")
+	var b strings.Builder
+	for i, d := range whole {
+		if i > 0 && (len(whole)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(d)
+	}
+	if hasFrac {
+		return sign + b.String() + "." + frac
+	}
+	return sign + b.String()
+}
