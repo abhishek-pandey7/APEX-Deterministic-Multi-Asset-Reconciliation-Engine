@@ -67,6 +67,6 @@ jobs:
         with:
           go-version-file: go.mod
       - name: database integration tests
-        run: go test ./internal/store/ ./internal/recon/
+        run: go test ./internal/store/ ./internal/recon/ ./internal/api/
         env:
           APEX_TEST_DB_URL: ${{ env.DB_URL }}

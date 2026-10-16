@@ -23,9 +23,10 @@ difference into a break an operations analyst can resolve.
 | Matching engine (`internal/match`) | Exact, tolerance and N-to-M phases done; fuzzy next |
 | Break classification (`match.Classify`) | Done: six categories with a reason per break, 99.8–100% accurate |
 | Stored runs (`internal/recon`, `apex run`) | Done: runs, matches, breaks and their audit events saved in one transaction; 770k rows in 17 s |
+| HTTP API (`internal/api`, `apex serve`) | Done: runs, live progress over SSE, break review workflow |
 | Evaluation (`internal/eval`, `apex eval`) | Done: scores runs against ground truth, CI quality gate |
 | Position reconciliation | Planned |
-| API, SSE and UI | Planned |
+| Web UI | Next |
 | AI break worker | Planned |
 
 ## Quick start
@@ -39,6 +40,7 @@ make check          # go vet, go test -race, generator tests
 make gen            # data/small: about 22k cash rows with truth files
 make load           # ingest data/small into Postgres
 make run            # reconcile everything loaded and store the run
+make serve          # API on localhost:8080
 make test-int       # tests against generated data and the database
 make eval           # match data/small and score it against the truth file
 ```
@@ -67,15 +69,37 @@ exactly one combination and no other batch competes for its entries. On busy day
 not provable, and the batch is left open for review rather than guessed. Every run is also checked
 for determinism: the same data, shuffled and matched on one worker, must hash the same.
 
+## API
+
+`apex serve` listens on `localhost:8080`.
+
+| Method and path | Purpose |
+|---|---|
+| `GET /api/runs` | Recent runs with their stats and output hash |
+| `POST /api/runs` | Start a run in the background (`{"file_ids": [...]}` optional); returns a job |
+| `GET /api/jobs/{id}/events` | The job's progress as Server-Sent Events: `load`, `match`, `classify`, `save`, `done`, then `summary` or `failed` |
+| `GET /api/runs/{id}/breaks` | One page of breaks, filtered by `category`, `status`, `account`, plus counts |
+| `GET /api/breaks/{id}` | A break with its entries and full audit history |
+| `POST /api/breaks/{id}/events` | Move a break through the workflow (`{"status": "PROPOSED", "reason": "..."}`), acting as the `X-Actor` header |
+
+Invalid transitions and self-approvals are refused by the database's own triggers and come back
+as `409`, so no client, including this API, can skip the four-eyes check.
+
+```
+curl -X POST localhost:8080/api/breaks/95/events -H 'X-Actor: ana' -d '{"status":"ASSIGNED"}'
+```
+
 ## Layout
 
 ```
-cmd/apex/           command-line entry point (apex ingest, apex eval, apex layouts)
+cmd/apex/           command-line entry point (ingest, run, serve, eval, layouts)
+internal/api/       HTTP API and progress streaming
 internal/domain/    normalised cash entries and positions
 internal/eval/      scoring against ground truth
 internal/ingest/    file layouts and parsing
 internal/match/     matching engine
 internal/money/     fixed-point amounts, quantities, prices
+internal/recon/     a full run: load, match, classify, store
 internal/store/     Postgres persistence
 migrations/         versioned Postgres schema (golang-migrate)
 tests/sql/          database-level tests
