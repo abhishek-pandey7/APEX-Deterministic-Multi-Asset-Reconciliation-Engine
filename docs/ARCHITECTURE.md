@@ -93,7 +93,7 @@ records that earlier phases left unmatched. Algorithm detail and alternatives ar
 |---|---|---|
 | 1. Exact | Same account, currency, amount and value date, references agree | Auto-matched |
 | 2. Tolerance | Value date within N business days, amount within an absolute/relative tolerance | Auto-matched if exactly one best candidate, otherwise proposed |
-| 3. N-to-M | Groups whose sums agree within tolerance (split wires, netted fees) | Auto-matched if the solution is unique, otherwise proposed |
+| 3. N-to-M | Splits and netting anchored by reference; fee batches by exact same-day totals | Auto-matched if the solution is unique; ambiguous batches stay open |
 | 4. Fuzzy | Scored candidates using reference, counterparty, amount and date evidence | Proposed only; a human confirms |
 
 Anything left after phase 4 becomes a break.

@@ -20,7 +20,7 @@ difference into a break an operations analyst can resolve.
 | Postgres schema (`migrations/`) | Done: ingestion, runs, matches, breaks, append-only audit, job queue |
 | Synthetic data (`tools/apexgen`) | Done: 11 cash and 8 position scenarios with ground truth |
 | Ingestion (`internal/ingest`, `cmd/apex`) | Done: layouts per source, row validation, file hashing, COPY loading |
-| Matching engine (`internal/match`) | Exact and tolerance phases done; N-to-M and fuzzy next |
+| Matching engine (`internal/match`) | Exact, tolerance and N-to-M phases done; fuzzy next |
 | Evaluation (`internal/eval`, `apex eval`) | Done: scores runs against ground truth, CI quality gate |
 | Position reconciliation | Planned |
 | API, SSE and UI | Planned |
@@ -46,18 +46,22 @@ Without `make`, see the [Makefile](Makefile) for the underlying commands.
 
 ## Results so far
 
-`apex eval` on the 770k-row medium dataset (seed 42), exact and tolerance phases only:
+`apex eval` with the exact, tolerance and N-to-M phases:
 
-| | |
-|---|---|
-| Throughput | about 2M rows/s on 16 workers |
-| Wrong auto matches | 0 of 320,456 |
-| Recovered: exact, timing (1–2 business days), rounding (≤ 0.99) | 100% |
-| Breaks left open: missing on either side, amount mismatch | 99.6–100% |
-| Not yet recovered: splits, netting, many-to-many, mangled references | 0% (N-to-M and fuzzy phases) |
+| | small (44k rows) | medium (770k rows, denser) |
+|---|---|---|
+| Throughput (16 workers) | about 1.2M rows/s | about 0.9M rows/s |
+| Wrong auto matches | 0 of 21,925 | 2 of 371,582 |
+| Exact, timing, rounding, splits | 100% | 100% |
+| Netted many-to-many | 100% | 99.4% |
+| Fee batches (amount evidence only) | 77.9% | 45.0% |
+| Breaks left open | 100% | 99.6–100% |
+| Mangled references outside the date window | 0% (fuzzy phase next) | 0% |
 
-Every run is checked for determinism: the same data, shuffled and matched on one worker, must
-produce the same result hash.
+Fee batches carry no reference, so a batch is matched only when an exhaustive search finds
+exactly one combination and no other batch competes for its entries. On busy days that is often
+not provable, and the batch is left open for review rather than guessed. Every run is also checked
+for determinism: the same data, shuffled and matched on one worker, must hash the same.
 
 ## Layout
 

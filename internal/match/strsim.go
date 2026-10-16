@@ -105,14 +105,15 @@ func tokens(narrative string) []string {
 // on 0..1000:
 //
 //	1000  a token equals the reference
-//	 950  one contains the other (truncated, prefix dropped, wrapped in /RFB/)
-//	 900  same digits apart from one adjacent swap, possibly after truncation (a keying error)
+//	 950  one contains the other with every digit kept (prefix dropped, wrapped in /RFB/)
+//	 900  digits lost to truncation, or one adjacent swap (a keying error)
 //	≤500  identifier-like tokens whose digits differ in any other way
 //
 // Identifiers are compared on their digits rather than by Jaro–Winkler. References are often
 // sequential, and JW scores neighbours like FEE0000123 and FEE0000124 around 0.9, as similar
 // as a genuine typo. A single changed digit is deliberately not forgiven: that is exactly how
-// neighbouring ids differ. Tokens without digits fall back to Jaro–Winkler.
+// neighbouring ids differ. A truncation is also only 900: TRD202600079 is a prefix of ten
+// sequential ids, so it cannot single one out. Tokens without digits fall back to Jaro–Winkler.
 func RefSim(ref string, narrativeTokens []string) int32 {
 	if ref == "" {
 		return 0
@@ -126,8 +127,13 @@ func RefSim(ref string, narrativeTokens []string) int32 {
 		var s int32
 		td := digitsOf(t)
 		switch {
-		case len(t) >= 8 && (strings.Contains(ref, t) || strings.Contains(t, ref)):
+		case len(t) >= 8 && strings.Contains(t, ref):
 			s = 950
+		case len(t) >= 8 && strings.Contains(ref, t):
+			s = 900
+			if td == refDigits {
+				s = 950 // only letters were dropped
+			}
 		case len(refDigits) >= 4 && len(td) >= 4:
 			if sameOrSwapped(refDigits, td) ||
 				(len(td) >= 6 && len(td) < len(refDigits) && sameOrSwapped(refDigits[:len(td)], td)) {

@@ -3,6 +3,8 @@ package match
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/abhishek-pandey7/APEX-Deterministic-Multi-Asset-Reconciliation-Engine/internal/domain"
@@ -18,19 +20,19 @@ func cus(id, account string, amount int64, day, narrative string) domain.CashEnt
 		AmountMinor: amount, ValueDate: date(day), Reference: narrative}
 }
 
-// pairs renders matches as "L1=C1/AUTO" strings for easy comparison.
+// pairs renders matches as {"L1L2": "C1C2/PHASE/DISPOSITION"} with ids sorted, for easy comparison.
 func pairs(r Result, l, c []domain.CashEntry) map[string]string {
+	ids := func(all []domain.CashEntry, idx []int32) string {
+		names := make([]string, len(idx))
+		for k, i := range idx {
+			names[k] = all[i].ExternalID
+		}
+		slices.Sort(names)
+		return strings.Join(names, "")
+	}
 	out := map[string]string{}
 	for _, m := range r.Matches {
-		key := ""
-		for _, i := range m.Ledger {
-			key += l[i].ExternalID
-		}
-		val := ""
-		for _, i := range m.Custodian {
-			val += c[i].ExternalID
-		}
-		out[key] = fmt.Sprintf("%s/%s/%s", val, m.Phase, m.Disposition)
+		out[ids(l, m.Ledger)] = fmt.Sprintf("%s/%s/%s", ids(c, m.Custodian), m.Phase, m.Disposition)
 	}
 	return out
 }

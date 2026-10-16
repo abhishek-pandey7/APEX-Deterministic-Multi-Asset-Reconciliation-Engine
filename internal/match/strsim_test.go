@@ -38,7 +38,9 @@ func TestRefSim(t *testing.T) {
 	}{
 		{"SETTLEMENT REF TRD-2026-0001234 NORTHBRIDGE SEC", 1000, 1000},
 		{"SETTLEMENT REF TRD20260001234", 1000, 1000},
-		{"SETTLEMENT REF /RFB/TRD202600012", 950, 999},        // wrapped and truncated
+		{"SETTLEMENT REF /RFB/TRD202600012", 900, 900},        // truncated: matches ten sequential ids
+		{"SETTLEMENT REF /RFB/TRD20260001234", 1000, 1000},    // wrapper splits off cleanly
+		{"SETTLEMENT REF XTRD20260001234", 950, 950},          // reference embedded in a longer token
 		{"SETTLEMENT REF TRD20260002134", 900, 999},           // transposed digits
 		{"SETTLEMENT REF TRD20269999999 GRANITE ROW", 0, 500}, // a different trade
 		{"SETTLEMENT REF TRD20260001235", 0, 500},             // the next trade in sequence

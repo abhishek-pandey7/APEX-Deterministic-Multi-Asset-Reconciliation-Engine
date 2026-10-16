@@ -106,22 +106,39 @@ Benchmark results from [1] that matter here:
 
 ### What APEX does
 
-After phases 1–2, the leftovers in a partition are usually few, but the raw sum range `X` in minor units
-can be large, so a dense DP table isn't always practical. APEX uses:
+Partitions are small after phases 1–2, and the sum range in minor units is large, so a dense DP
+table is not worth it. APEX uses bounded enumeration with pruning (`internal/match/subset.go`):
+magnitudes sorted largest first, skip a value that overshoots, and stop when the largest
+remaining values can no longer reach the target. Group size is capped at 4 per side and the
+search at 24 candidates, which keeps a worst-case search in microseconds.
 
-1. **Bounded enumeration with pruning** for 1:N and N:1. For each unmatched entry, consider entries on the
-   other side within the date window, sorted by amount. Search subsets up to size `k` (default 4) with
-   branch-and-bound: stop extending once the partial sum exceeds the target plus tolerance (only valid when
-   all amounts have the same sign, which holds within a direction).
-2. **Meet-in-the-middle** for N:M with a small cap (default 3×3): enumerate subset sums on each side, hash
-   them into tolerance buckets, and probe the neighbouring buckets.
-3. **Ambiguity check.** Count the solutions up to 2. If exactly one exists, auto-match it. If more than one
-   exists, emit a proposal. When several solutions tie, the choice is canonical (lexicographically smallest
-   sorted id tuple) so reruns agree.
-4. **Re-validation** of every match on the original integer amounts.
+Two passes, each with its own standard of evidence:
 
-The greedy wrapper is used: smallest groups first, which matches [1]'s observation that the objective
-favours finer-grained matches.
+1. **Reference-anchored.** Custodian lines carrying a ledger entry's reference (score ≥ 950)
+   are gathered. If some of them sum to the entry, it is a split. If all of them together
+   are matched by the entry plus up to three same-day ledger entries, with an exact total, it is
+   a netted group. One linked line whose amount differs is an amount mismatch, never netting.
+2. **Batches, by amount only.** A custodian line with no specific identifier (a date is allowed)
+   is matched to same-day ledger entries that sum to it exactly. Splits without any reference
+   are deliberately not attempted.
+
+### Findings from the evaluation
+
+Each rule below was added because the evaluation showed wrong auto matches without it.
+
+| Problem seen | Rule |
+|---|---|
+| A fee from the next day stood in for a batch member | Batch legs must share the batch's value date |
+| "Unique among 24 capped candidates" is not unique; 570 wrong autos on dense data | If candidates exceed the cap, uniqueness can't be certified, so nothing is matched |
+| A line naming one specific fee was explained as a batch of others | Lines with a specific identifier are never batches |
+| One referenced line with a different amount was "explained" by another entry | Netting needs at least two referenced lines and an exact total |
+| An early wrong batch used up a real member; a later batch then matched a stand-in | All batch candidates are found first; any batch whose entries another batch also wants is left open |
+| Ambiguous groups were proposed and consumed entries that should stay breaks | Amount-only groups with a second solution are not matched at all |
+
+Result on the 770k-row dataset: wrong auto pairs went 570 → 566 → 7 → 2 of about 371,600, while
+splits and netting recovery stayed at 99–100%. The price is fee-batch recall on busy days (45%),
+which is the intended trade: an open break costs an analyst minutes, a wrong auto match costs a
+misstatement nobody reviews.
 
 ## 7. Phase 4: fuzzy / probabilistic matching
 
@@ -152,15 +169,17 @@ APEX therefore scores identifier-like tokens (four or more digits) on their digi
 | Evidence | Score |
 |---|---|
 | Token equals the reference | 1000 |
-| One contains the other (truncated, prefix dropped, wrapped) | 950 |
-| Same digits apart from one adjacent swap, possibly after truncation | 900 |
+| One contains the other with every digit kept (prefix dropped, wrapped) | 950 |
+| Digits lost to truncation, or one adjacent swap | 900 |
 | Any other digit difference | at most 500 |
 
 A single *changed* digit is deliberately not forgiven, because that is exactly how neighbouring
 ids differ. Two thresholds then apply: a pair needs 950 to be auto-confirmed and 600 to be
 proposed at all. The remaining error after the digit rule was one pair whose ids, `18769` and
 `18679`, really are one swap apart; no similarity measure can separate that from a keying error,
-so swap-level evidence (900) now always goes to a human. Wrong auto matches: 99, then 1, then 0
+so swap-level evidence (900) now always goes to a human. Truncation was later moved to the same
+tier: `TRD202600079` is a prefix of ten sequential ids, and when the N-to-M phase used it as an
+anchor it merged two unrelated groups. Wrong auto matches: 99, then 1, then 0
 of 320,456 on the medium dataset.
 
 ### Combining evidence: Fellegi–Sunter

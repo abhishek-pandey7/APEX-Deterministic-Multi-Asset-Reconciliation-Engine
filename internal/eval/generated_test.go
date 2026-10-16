@@ -43,10 +43,14 @@ func TestQualityGate(t *testing.T) {
 	if got := r.AutoPrecision(); got < 0.9995 {
 		t.Errorf("auto precision %.5f, want >= 0.9995 (%d wrong)", got, r.FalseAutoPairs())
 	}
-	for _, s := range []string{"EXACT", "TIMING", "ROUNDING"} {
+	for s, bar := range map[string]float64{
+		"EXACT": 0.999, "TIMING": 0.999, "ROUNDING": 0.999, "SPLIT": 0.99, "MANY_TO_MANY": 0.95,
+		// Batches are matched on amounts alone, so ambiguous ones are rightly left open.
+		"AGGREGATE": 0.70,
+	} {
 		st := r.Scenarios[s]
-		if got := float64(st.AutoRecovered) / float64(st.Groups); got < 0.999 {
-			t.Errorf("%s auto-recovered %.4f, want >= 0.999", s, got)
+		if got := float64(st.AutoRecovered) / float64(st.Groups); got < bar {
+			t.Errorf("%s auto-recovered %.4f, want >= %.2f", s, got, bar)
 		}
 	}
 	for _, s := range []string{"MISSING_IN_CUSTODIAN", "MISSING_IN_LEDGER", "AMOUNT_MISMATCH"} {

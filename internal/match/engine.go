@@ -21,6 +21,7 @@ type Phase uint8
 const (
 	PhaseExact Phase = iota + 1
 	PhaseTolerance
+	PhaseNToM
 )
 
 func (p Phase) String() string {
@@ -29,6 +30,8 @@ func (p Phase) String() string {
 		return "EXACT"
 	case PhaseTolerance:
 		return "TOLERANCE"
+	case PhaseNToM:
+		return "N_TO_M"
 	}
 	return fmt.Sprintf("Phase(%d)", p)
 }
@@ -71,12 +74,17 @@ type Config struct {
 	// MinProposeRefSim is the reference similarity a tolerance pair needs to be proposed at all.
 	// Below it the references conflict (different ids), and a proposal would only be noise.
 	MinProposeRefSim int32
+	// MaxGroupSize caps how many entries one side of an N-to-M group may have.
+	MaxGroupSize int
+	// MaxCandidates caps how many entries an N-to-M search considers, keeping it bounded.
+	MaxCandidates int
 	// Workers is how many partitions are matched in parallel. It never changes the result.
 	Workers int
 }
 
 func DefaultConfig() Config {
-	return Config{DateWindow: 2, AmountTolerance: 99, MinAutoRefSim: 950, MinProposeRefSim: 600, Workers: runtime.NumCPU()}
+	return Config{DateWindow: 2, AmountTolerance: 99, MinAutoRefSim: 950, MinProposeRefSim: 600,
+		MaxGroupSize: 4, MaxCandidates: 24, Workers: runtime.NumCPU()}
 }
 
 type Result struct {
@@ -200,6 +208,7 @@ func matchPartition(ledger, custodian []domain.CashEntry, p part, cfg Config) Re
 	var r Result
 	exactPhase(l, c, cfg, &r)
 	tolerancePhase(l, c, cfg, &r)
+	nToMPhase(l, c, cfg, &r)
 	for i, u := range l.used {
 		if !u {
 			r.UnmatchedLedger = append(r.UnmatchedLedger, l.index[i])
@@ -367,16 +376,16 @@ func (r Result) Hash(ledger, custodian []domain.CashEntry) [32]byte {
 	}
 	lines := make([]string, len(r.Matches))
 	for i, m := range r.Matches {
-		var b strings.Builder
-		fmt.Fprintf(&b, "%s|%s|%d|", m.Phase, m.Disposition, m.RefSim)
-		for _, j := range m.Ledger {
-			b.WriteString(ledger[j].ExternalID + " ")
+		names := func(all []domain.CashEntry, idx []int32) string {
+			out := make([]string, len(idx))
+			for k, j := range idx {
+				out[k] = all[j].ExternalID
+			}
+			slices.Sort(out)
+			return strings.Join(out, " ")
 		}
-		b.WriteString("|")
-		for _, j := range m.Custodian {
-			b.WriteString(custodian[j].ExternalID + " ")
-		}
-		lines[i] = b.String()
+		lines[i] = fmt.Sprintf("%s|%s|%d|%s|%s", m.Phase, m.Disposition, m.RefSim,
+			names(ledger, m.Ledger), names(custodian, m.Custodian))
 	}
 	slices.Sort(lines)
 	for _, line := range lines {
