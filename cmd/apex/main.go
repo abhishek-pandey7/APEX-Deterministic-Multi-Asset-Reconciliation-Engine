@@ -36,6 +36,8 @@ func main() {
 		err = runRecon(os.Args[2:])
 	case "serve":
 		err = runServe(os.Args[2:])
+	case "weights":
+		err = runWeights(os.Args[2:])
 	case "layouts":
 		fmt.Println(strings.Join(ingest.LayoutNames(), "\n"))
 	default:

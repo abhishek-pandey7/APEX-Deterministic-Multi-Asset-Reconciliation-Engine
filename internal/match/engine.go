@@ -22,6 +22,7 @@ const (
 	PhaseExact Phase = iota + 1
 	PhaseTolerance
 	PhaseNToM
+	PhaseFuzzy
 )
 
 func (p Phase) String() string {
@@ -32,6 +33,8 @@ func (p Phase) String() string {
 		return "TOLERANCE"
 	case PhaseNToM:
 		return "N_TO_M"
+	case PhaseFuzzy:
+		return "FUZZY"
 	}
 	return fmt.Sprintf("Phase(%d)", p)
 }
@@ -60,6 +63,8 @@ type Match struct {
 	Custodian   []int32
 	// RefSim is the reference similarity (0..1000) that supported the match.
 	RefSim int32
+	// Score is the Fellegi–Sunter weight in millibits for fuzzy proposals, zero otherwise.
+	Score int32
 }
 
 type Config struct {
@@ -78,13 +83,21 @@ type Config struct {
 	MaxGroupSize int
 	// MaxCandidates caps how many entries an N-to-M search considers, keeping it bounded.
 	MaxCandidates int
+	// FuzzyWindow is how many business days apart a fuzzy candidate pair may be.
+	FuzzyWindow int32
+	// FuzzyThreshold is the Fellegi–Sunter score (millibits) a pair needs to be proposed.
+	FuzzyThreshold int32
+	// FuzzyWeights are the per-level log-likelihood weights; see fuzzy.go.
+	FuzzyWeights Weights
 	// Workers is how many partitions are matched in parallel. It never changes the result.
 	Workers int
 }
 
 func DefaultConfig() Config {
 	return Config{DateWindow: 2, AmountTolerance: 99, MinAutoRefSim: 950, MinProposeRefSim: 600,
-		MaxGroupSize: 4, MaxCandidates: 24, Workers: runtime.NumCPU()}
+		MaxGroupSize: 4, MaxCandidates: 24,
+		FuzzyWindow: 10, FuzzyThreshold: DefaultFuzzyThreshold, FuzzyWeights: DefaultWeights,
+		Workers: runtime.NumCPU()}
 }
 
 type Result struct {
@@ -209,6 +222,7 @@ func matchPartition(ledger, custodian []domain.CashEntry, p part, cfg Config) Re
 	exactPhase(l, c, cfg, &r)
 	tolerancePhase(l, c, cfg, &r)
 	nToMPhase(l, c, cfg, &r)
+	fuzzyPhase(l, c, cfg, &r)
 	for i, u := range l.used {
 		if !u {
 			r.UnmatchedLedger = append(r.UnmatchedLedger, l.index[i])
@@ -384,7 +398,7 @@ func (r Result) Hash(ledger, custodian []domain.CashEntry) [32]byte {
 			slices.Sort(out)
 			return strings.Join(out, " ")
 		}
-		lines[i] = fmt.Sprintf("%s|%s|%d|%s|%s", m.Phase, m.Disposition, m.RefSim,
+		lines[i] = fmt.Sprintf("%s|%s|%d|%d|%s|%s", m.Phase, m.Disposition, m.RefSim, m.Score,
 			names(ledger, m.Ledger), names(custodian, m.Custodian))
 	}
 	slices.Sort(lines)
@@ -399,7 +413,7 @@ func (r Result) Hash(ledger, custodian []domain.CashEntry) [32]byte {
 }
 
 // Version identifies the engine build recorded on every stored run.
-const Version = "0.4.0"
+const Version = "0.5.0"
 
 // RuleVersion fingerprints everything that can change a result: the engine version and every
 // setting except Workers, which never does. Two runs with the same RuleVersion over the same

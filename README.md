@@ -20,7 +20,7 @@ difference into a break an operations analyst can resolve.
 | Postgres schema (`migrations/`) | Done: ingestion, runs, matches, breaks, append-only audit, job queue |
 | Synthetic data (`tools/apexgen`) | Done: 11 cash and 8 position scenarios with ground truth |
 | Ingestion (`internal/ingest`, `cmd/apex`) | Done: layouts per source, row validation, file hashing, COPY loading |
-| Matching engine (`internal/match`) | Exact, tolerance and N-to-M phases done; fuzzy next |
+| Matching engine (`internal/match`) | Done: exact, tolerance, N-to-M and fuzzy (Fellegi–Sunter) phases |
 | Break classification (`match.Classify`) | Done: six categories with a reason per break, 99.8–100% accurate |
 | Stored runs (`internal/recon`, `apex run`) | Done: runs, matches, breaks and their audit events saved in one transaction; 770k rows in 17 s |
 | HTTP API (`internal/api`, `apex serve`) | Done: runs, live progress over SSE, break review workflow |
@@ -46,6 +46,7 @@ make ai-setup       # Python environment for the AI worker
 make worker         # AI worker: similarity vectors and suggestions (GROQ_API_KEY in .env, optional)
 make test-int       # tests against generated data and the database
 make eval           # match data/small and score it against the truth file
+make weights        # re-estimate fuzzy-match weights; choose the threshold on held-out data
 ```
 
 The database listens on host port 55432, so it doesn't collide with a local Postgres.
@@ -54,18 +55,20 @@ Without `make`, see the [Makefile](Makefile) for the underlying commands.
 
 ## Results so far
 
-`apex eval` with the exact, tolerance and N-to-M phases:
+`apex eval` with all four matching phases:
 
 | | small (44k rows) | medium (770k rows, denser) |
 |---|---|---|
-| Throughput (16 workers) | about 1.2M rows/s | about 0.9M rows/s |
+| Throughput (16 workers) | about 1.2M rows/s | about 1.1M rows/s |
 | Wrong auto matches | 0 of 21,925 | 2 of 371,582 |
+| Pair precision, proposals included | 1.0000 | 0.9999 |
+| Pair recall | 0.987 | 0.968 |
 | Exact, timing, rounding, splits | 100% | 100% |
 | Netted many-to-many | 100% | 99.4% |
+| Late settlements with mangled references (proposed for review) | 97.7% | 96.7% |
 | Fee batches (amount evidence only) | 77.9% | 45.0% |
 | Breaks left open | 100% | 99.6–100% |
 | Break category accuracy | 100% (1,360) | 99.8% (24,114) |
-| Mangled references outside the date window | 0% (fuzzy phase next) | 0% |
 
 Fee batches carry no reference, so a batch is matched only when an exhaustive search finds
 exactly one combination and no other batch competes for its entries. On busy days that is often

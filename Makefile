@@ -1,4 +1,4 @@
-.PHONY: test race vet check test-int load run serve web worker ai-setup eval gen gen-test db-up db-down db-reset db-test psql
+.PHONY: test race vet check test-int load run serve web worker ai-setup eval weights gen gen-test db-up db-down db-reset db-test psql
 
 test:
 	go test ./...
@@ -40,6 +40,10 @@ worker:
 
 eval:
 	go run ./cmd/apex eval -data data/small
+
+weights:
+	cd tools && python -m apexgen --out ../data/holdout --seed 7 --accounts 40
+	go run ./cmd/apex weights -data data/small -holdout data/holdout
 
 load:
 	go run ./cmd/apex ingest -layout apex-ledger-cash data/small/ledger_cash.csv

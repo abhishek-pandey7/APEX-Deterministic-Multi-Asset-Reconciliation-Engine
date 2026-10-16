@@ -53,6 +53,13 @@ func TestQualityGate(t *testing.T) {
 			t.Errorf("%s auto-recovered %.4f, want >= %.2f", s, got, bar)
 		}
 	}
+	// Fuzzy matches are proposals: they count as recovered but must never be auto-confirmed.
+	if st := r.Scenarios["FUZZY_REF"]; float64(st.Recovered)/float64(st.Groups) < 0.95 || st.AutoRecovered != 0 {
+		t.Errorf("FUZZY_REF recovered %d and auto %d of %d, want >= 95%% and no auto", st.Recovered, st.AutoRecovered, st.Groups)
+	}
+	if got := r.Precision(); got < 0.999 {
+		t.Errorf("pair precision %.5f, want >= 0.999 (proposals included)", got)
+	}
 	for _, s := range []string{"MISSING_IN_CUSTODIAN", "MISSING_IN_LEDGER", "AMOUNT_MISMATCH"} {
 		st := r.Scenarios[s]
 		if got := float64(st.LeftOpen) / float64(st.Groups); got < 0.99 {

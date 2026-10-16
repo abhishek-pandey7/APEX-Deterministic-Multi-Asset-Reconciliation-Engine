@@ -201,16 +201,30 @@ is among true matches than among non-matches:
 Comparisons in APEX: reference tokens, counterparty name, amount difference band, date gap band, and
 transaction type.
 
-**APEX:** a Fellegi–Sunter scorer with `m` and `u` estimated from the synthetic ground truth (labels are
-available) and checked against EM. The alternative is logistic regression or gradient boosting on the same
-features with calibrated probabilities. Fellegi–Sunter was chosen because each match explains itself: every
-field contributes a readable weight that the UI can show.
+**APEX:** a Fellegi–Sunter scorer over four fields: reference (5 levels), amount (2), date gap (4)
+and whether the narrative names the ledger counterparty (3). `m` and `u` are counted from labelled
+candidates with `apex weights` (labels are available, so EM isn't needed yet), weights are capped
+at ±6 bits, and everything is stored as integer millibits. Fellegi–Sunter was chosen over a learned
+classifier because each proposal explains itself: every field contributes a readable weight.
+
+Estimated weights (small dataset, 565 true and 208 false candidates):
+
+| Field | Levels and weights (millibits) |
+|---|---|
+| Reference | same id +5,613; id kept +4,902; keying error or truncation +5,942; weak +1,750; conflicting −5,529 |
+| Amount | equal +173; within tolerance −6,000 |
+| Date gap | 0–2 days −6,000; 3–4 +1,344; 5–6 +1,352; 7–10 −6,000 |
+| Counterparty | named +3,909; not named −6,000; none on the ledger −1,429 |
+
+Some of these describe the generator rather than custodians (it never delays a true settlement
+beyond 6 days or omits the counterparty from these narratives); see ADR 0021.
 
 ### Choosing the threshold
 
-0.85 isn't a principled number. The threshold is chosen on a held-out generated dataset as the lowest score
-at which precision is at least 99.5%. Scores above it are proposed with high priority, and scores in a lower
-band are proposed with low priority. Fuzzy matches are never auto-confirmed.
+The threshold was chosen on held-out data (seed 7) and checked on the denser medium dataset.
+Precision is 1.000 at 96.7% recall anywhere from 2,000 to 6,000 millibits; at 0 the medium dataset
+let 3 wrong pairs through, and above 8,000 recall falls. APEX uses 4,000, the middle of that range.
+Fuzzy matches are never auto-confirmed.
 
 ## 8. Position reconciliation
 

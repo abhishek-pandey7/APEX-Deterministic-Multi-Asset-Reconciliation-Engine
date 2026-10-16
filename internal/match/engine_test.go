@@ -90,12 +90,14 @@ func TestTolerancePhase(t *testing.T) {
 	}
 	r := Run(l, c, DefaultConfig())
 	got := pairs(r, l, c)
-	want := map[string]string{"L1": "C1/TOLERANCE/AUTO", "L2": "C2/TOLERANCE/AUTO"}
+	// L3 is outside the tolerance window, so phase 4 only proposes it; L4's amount is off by
+	// more than the tolerance, so nothing matches it.
+	want := map[string]string{"L1": "C1/TOLERANCE/AUTO", "L2": "C2/TOLERANCE/AUTO", "L3": "C3/FUZZY/PROPOSED"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("got %v\nwant %v", got, want)
 	}
-	if len(r.UnmatchedLedger) != 2 || len(r.UnmatchedCustodian) != 2 {
-		t.Errorf("unmatched ledger=%d custodian=%d, want 2 and 2", len(r.UnmatchedLedger), len(r.UnmatchedCustodian))
+	if len(r.UnmatchedLedger) != 1 || len(r.UnmatchedCustodian) != 1 {
+		t.Errorf("unmatched ledger=%d custodian=%d, want 1 and 1", len(r.UnmatchedLedger), len(r.UnmatchedCustodian))
 	}
 }
 

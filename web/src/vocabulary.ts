@@ -35,6 +35,7 @@ export const phaseName: Record<string, string> = {
   EXACT: "Exact",
   TOLERANCE: "Within tolerance",
   N_TO_M: "Grouped",
+  FUZZY: "Likely, to review",
 };
 
 export const people = ["ana", "ben", "chen"];

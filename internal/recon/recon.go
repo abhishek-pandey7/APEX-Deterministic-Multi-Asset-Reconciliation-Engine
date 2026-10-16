@@ -125,6 +125,8 @@ func rule(p match.Phase) string {
 		return "same amount and value date, references agree"
 	case match.PhaseTolerance:
 		return "amount and date within tolerance, best reference evidence"
+	case match.PhaseFuzzy:
+		return "Fellegi-Sunter score over reference, amount, date gap and counterparty; proposed for review"
 	default:
 		return "group totals agree: reference-anchored split or netting, or a unique same-day batch"
 	}
