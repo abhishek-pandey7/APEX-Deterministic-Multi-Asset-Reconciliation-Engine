@@ -54,6 +54,12 @@ SELECT pg_temp.assert_fails(
     $$DELETE FROM break_events WHERE break_id = 900001$$,
     '%append-only%');
 
+-- TRUNCATE skips row triggers, so it needs its own guard, including via CASCADE.
+SELECT pg_temp.assert_fails($$TRUNCATE break_events CASCADE$$, '%append-only%');
+SELECT pg_temp.assert_fails($$TRUNCATE matches CASCADE$$, '%append-only%');
+SELECT pg_temp.assert_fails($$TRUNCATE match_legs$$, '%append-only%');
+SELECT pg_temp.assert_fails($$TRUNCATE cash_entries CASCADE$$, '%append-only%');
+
 -- The view reports the latest state.
 DO $$
 BEGIN
