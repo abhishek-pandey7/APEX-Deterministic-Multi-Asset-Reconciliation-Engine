@@ -21,6 +21,7 @@ difference into a break an operations analyst can resolve.
 | Synthetic data (`tools/apexgen`) | Done: 11 cash and 8 position scenarios with ground truth |
 | Ingestion (`internal/ingest`, `cmd/apex`) | Done: layouts per source, row validation, file hashing, COPY loading |
 | Matching engine (`internal/match`) | Exact, tolerance and N-to-M phases done; fuzzy next |
+| Break classification (`match.Classify`) | Done: six categories with a reason per break, 99.8–100% accurate |
 | Evaluation (`internal/eval`, `apex eval`) | Done: scores runs against ground truth, CI quality gate |
 | Position reconciliation | Planned |
 | API, SSE and UI | Planned |
@@ -56,6 +57,7 @@ Without `make`, see the [Makefile](Makefile) for the underlying commands.
 | Netted many-to-many | 100% | 99.4% |
 | Fee batches (amount evidence only) | 77.9% | 45.0% |
 | Breaks left open | 100% | 99.6–100% |
+| Break category accuracy | 100% (1,360) | 99.8% (24,114) |
 | Mangled references outside the date window | 0% (fuzzy phase next) | 0% |
 
 Fee batches carry no reference, so a batch is matched only when an exhaustive search finds

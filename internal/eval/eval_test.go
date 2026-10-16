@@ -45,3 +45,20 @@ func TestEvaluate(t *testing.T) {
 	check("DUPLICATE", ScenarioStats{Groups: 2, Recovered: 1, AutoRecovered: 1, LeftOpen: 1})
 	check("MISSING_IN_LEDGER", ScenarioStats{Groups: 1})
 }
+
+func TestEvaluateBreaks(t *testing.T) {
+	groups, err := ReadTruth(strings.NewReader(truth))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := EvaluateBreaks(groups, []PredictedBreak{
+		{Custodian: []string{"C6"}, Category: "DUPLICATE"},        // the twin of C7: still right
+		{Custodian: []string{"C8"}, Category: "CORPORATE_ACTION"}, // wrong category
+	})
+	if s := got["DUPLICATE"]; s.Expected != 1 || s.Correct != 1 {
+		t.Errorf("DUPLICATE = %+v", s)
+	}
+	if s := got["MISSING_IN_LEDGER"]; s.Expected != 1 || s.Correct != 0 || s.Got["CORPORATE_ACTION"] != 1 {
+		t.Errorf("MISSING_IN_LEDGER = %+v", s)
+	}
+}

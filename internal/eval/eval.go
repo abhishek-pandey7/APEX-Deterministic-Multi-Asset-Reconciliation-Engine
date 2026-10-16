@@ -200,3 +200,66 @@ func duplicateTwins(groups []Group) map[string]string {
 	}
 	return twins
 }
+
+// PredictedBreak is one engine break, by external id.
+type PredictedBreak struct {
+	Ledger, Custodian []string
+	Category          string
+}
+
+// CategoryStats counts, for one expected category, how many truth breaks got it right.
+type CategoryStats struct {
+	Expected, Correct int
+	// Got counts the categories actually assigned, for a confusion summary.
+	Got map[string]int
+}
+
+// EvaluateBreaks compares break categories with the truth file's categories for every group
+// that was expected to be a break. A truth break is looked up by any of its entries.
+func EvaluateBreaks(groups []Group, breaks []PredictedBreak) map[string]*CategoryStats {
+	canon := duplicateTwins(groups)
+	cid := func(id string) string {
+		if c, ok := canon[id]; ok {
+			return c
+		}
+		return id
+	}
+	byEntry := map[string]string{}
+	for _, b := range breaks {
+		for _, id := range b.Ledger {
+			byEntry[id] = b.Category
+		}
+		for _, id := range b.Custodian {
+			byEntry[cid(id)] = b.Category
+		}
+	}
+
+	out := map[string]*CategoryStats{}
+	for _, g := range groups {
+		if g.Expected != "BREAK" {
+			continue
+		}
+		s := out[g.Category]
+		if s == nil {
+			s = &CategoryStats{Got: map[string]int{}}
+			out[g.Category] = s
+		}
+		s.Expected++
+		got := "(matched)"
+		for _, id := range g.Ledger {
+			if c, ok := byEntry[id]; ok {
+				got = c
+			}
+		}
+		for _, id := range g.Custodian {
+			if c, ok := byEntry[cid(id)]; ok {
+				got = c
+			}
+		}
+		s.Got[got]++
+		if got == g.Category {
+			s.Correct++
+		}
+	}
+	return out
+}

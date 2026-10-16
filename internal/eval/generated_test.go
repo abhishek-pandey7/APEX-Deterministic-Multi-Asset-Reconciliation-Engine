@@ -59,7 +59,27 @@ func TestQualityGate(t *testing.T) {
 			t.Errorf("%s left open %.4f, want >= 0.99", s, got)
 		}
 	}
-	t.Logf("auto precision %.5f, pair recall %.4f", r.AutoPrecision(), r.Recall())
+	var predictedBreaks []eval.PredictedBreak
+	for _, b := range match.Classify(ledger, custodian, res, match.DefaultConfig()) {
+		pb := eval.PredictedBreak{Category: string(b.Category)}
+		for _, i := range b.Ledger {
+			pb.Ledger = append(pb.Ledger, ledger[i].ExternalID)
+		}
+		for _, i := range b.Custodian {
+			pb.Custodian = append(pb.Custodian, custodian[i].ExternalID)
+		}
+		predictedBreaks = append(predictedBreaks, pb)
+	}
+	total, correct := 0, 0
+	for _, s := range eval.EvaluateBreaks(truth, predictedBreaks) {
+		total += s.Expected
+		correct += s.Correct
+	}
+	if acc := float64(correct) / float64(total); acc < 0.99 {
+		t.Errorf("break category accuracy %.4f, want >= 0.99", acc)
+	}
+
+	t.Logf("auto precision %.5f, pair recall %.4f, break categories %d/%d", r.AutoPrecision(), r.Recall(), correct, total)
 }
 
 func load(t *testing.T, path, layout string) []domain.CashEntry {

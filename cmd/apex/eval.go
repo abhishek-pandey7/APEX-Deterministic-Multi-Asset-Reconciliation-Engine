@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/abhishek-pandey7/APEX-Deterministic-Multi-Asset-Reconciliation-Engine/internal/domain"
@@ -73,12 +74,54 @@ func runEval(args []string) error {
 	}
 	report := eval.Evaluate(truth, predicted)
 
+	start = time.Now()
+	breaks := match.Classify(ledger, custodian, res, cfg)
+	classifyTime := time.Since(start)
+	var predictedBreaks []eval.PredictedBreak
+	for _, b := range breaks {
+		pb := eval.PredictedBreak{Category: string(b.Category)}
+		for _, i := range b.Ledger {
+			pb.Ledger = append(pb.Ledger, ledger[i].ExternalID)
+		}
+		for _, i := range b.Custodian {
+			pb.Custodian = append(pb.Custodian, custodian[i].ExternalID)
+		}
+		predictedBreaks = append(predictedBreaks, pb)
+	}
+
 	rows := len(ledger) + len(custodian)
 	fmt.Printf("matched %d ledger + %d custodian entries in %s (%.0f rows/s, %d workers)\n",
 		len(ledger), len(custodian), elapsed.Round(time.Millisecond), float64(rows)/elapsed.Seconds(), cfg.Workers)
 	fmt.Printf("result hash %s, identical on shuffled single-worker rerun\n\n", hex.EncodeToString(hash[:8]))
 	printReport(report)
+	fmt.Println()
+	fmt.Printf("%d breaks classified in %s\n", len(breaks), classifyTime.Round(time.Millisecond))
+	printBreakReport(eval.EvaluateBreaks(truth, predictedBreaks))
 	return nil
+}
+
+func printBreakReport(stats map[string]*eval.CategoryStats) {
+	names := make([]string, 0, len(stats))
+	for n := range stats {
+		names = append(names, n)
+	}
+	slices.Sort(names)
+	fmt.Printf("%-22s %8s %10s   %s\n", "expected category", "breaks", "correct", "assigned instead")
+	total, correct := 0, 0
+	for _, n := range names {
+		s := stats[n]
+		total += s.Expected
+		correct += s.Correct
+		var other []string
+		for got, k := range s.Got {
+			if got != n {
+				other = append(other, fmt.Sprintf("%s %d", got, k))
+			}
+		}
+		slices.Sort(other)
+		fmt.Printf("%-22s %8d %10s   %s\n", n, s.Expected, pct(s.Correct, s.Expected), strings.Join(other, ", "))
+	}
+	fmt.Printf("category accuracy %.4f (%d of %d)\n", float64(correct)/float64(max(total, 1)), correct, total)
 }
 
 func printReport(r eval.Report) {

@@ -233,9 +233,30 @@ Deterministic signatures classify most position breaks before any AI is involved
 
 ## 9. Break classification and the AI layer
 
-Rules handle breaks with an unambiguous signature: only the date differs → `TIMING`; a small amount
-difference on a non-base currency → `FX`; custodian-only with dividend keywords → `CORPORATE_ACTION`. The
-AI worker handles the rest:
+`match.Classify` turns every unmatched entry into a break, applying rules in this order within each
+`(account, currency)`, and writes a one-line reason for each:
+
+| Rule | Category |
+|---|---|
+| Custodian line identical to one already matched | `DUPLICATE` |
+| Same reference and amount (within tolerance), dates beyond the window | `TIMING` |
+| Same reference (score ≥ 950), different amount | `AMOUNT` |
+| Custodian-only dividend or coupon | `CORPORATE_ACTION` |
+| Any other custodian-only line | `MISSING_IN_LEDGER` |
+| Any other ledger-only entry | `MISSING_IN_CUSTODIAN` |
+
+Category accuracy against the truth file: 100% (1,360 breaks) on the small dataset and 99.8%
+(24,114) on the medium one; the misses are entries the matcher had wrongly paired. Two findings:
+
+- Pairing by keying-error evidence (score 900) mislabelled 817 missing entries as `AMOUNT` on the
+  dense dataset, because a swapped digit often lands on an unrelated sequential fee. `AMOUNT` now
+  needs 950; `TIMING` may use 900 because there the amounts also agree.
+- Comparing every open ledger entry with every open custodian line took 66 s on the medium dataset.
+  Custodian lines are now indexed by the digits in their references, and each ledger reference looks
+  up only the digit strings that could score 900 or more (itself, its single adjacent swaps, its
+  truncations): 0.56 s.
+
+The AI worker handles what rules can't:
 
 1. **Classification** into the break taxonomy, as structured output with a confidence value.
 2. **Explanation** in plain language, plus a suggested action (a booking or a custodian query).
