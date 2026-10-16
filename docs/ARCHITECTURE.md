@@ -74,8 +74,11 @@ allows is rejected, never silently rounded.
 - **Ordered iteration.** Go randomises map iteration order, so any loop whose result depends on order
   iterates a sorted slice of keys.
 - **Stable tie-breaking.** Equal scores are broken by `(date, amount, source id)`, never by arrival order.
-- **Integer scores.** Match scores are stored in integer millibits. Go may fuse floating-point
-  multiply-adds on some architectures, so float scores could differ between machines.
+- **Integer scores.** Reference similarity is an integer from 0 to 1000, and Jaro–Winkler is computed
+  with exact integer fractions. Go may fuse floating-point multiply-adds on some architectures, so
+  float scores could differ between machines and flip a tie-break.
+- **Checked end to end.** The CSV files matched in memory (`apex eval`) and the same files loaded
+  into Postgres and matched from there (`apex run`) produce the same output hash.
 - **Pinned inputs.** Each `match_run` stores the engine version, the rule version, the configuration
   (`jsonb`) and the SHA-256 of every input file.
 - **Proof.** CI runs the engine twice on the same generated dataset and compares the output hashes, and

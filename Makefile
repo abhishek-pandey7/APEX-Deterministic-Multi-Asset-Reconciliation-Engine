@@ -1,4 +1,4 @@
-.PHONY: test race vet check test-int load eval gen gen-test db-up db-down db-reset db-test psql
+.PHONY: test race vet check test-int load run eval gen gen-test db-up db-down db-reset db-test psql
 
 test:
 	go test ./...
@@ -15,6 +15,9 @@ DB_URL ?= postgres://apex:apex@localhost:55432/apex?sslmode=disable
 
 test-int:
 	APEX_TEST_DATA=$(CURDIR)/data/small APEX_TEST_DB_URL=$(DB_URL) go test ./...
+
+run:
+	go run ./cmd/apex run
 
 eval:
 	go run ./cmd/apex eval -data data/small

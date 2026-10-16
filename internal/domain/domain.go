@@ -44,6 +44,8 @@ func (d Date) String() string { return d.Time().Format(dateLayout) }
 // CashEntry is one cash movement. AmountMinor is signed from the account's point of view
 // (positive is money in) and scaled by the currency's ISO 4217 exponent.
 type CashEntry struct {
+	// ID is the cash_entries row id once stored; zero for entries parsed but not yet loaded.
+	ID           int64
 	Side         Side
 	ExternalID   string
 	AccountID    string

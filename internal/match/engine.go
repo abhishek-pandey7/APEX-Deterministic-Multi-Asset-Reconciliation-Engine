@@ -397,3 +397,15 @@ func (r Result) Hash(ledger, custodian []domain.CashEntry) [32]byte {
 	copy(sum[:], h.Sum(nil))
 	return sum
 }
+
+// Version identifies the engine build recorded on every stored run.
+const Version = "0.4.0"
+
+// RuleVersion fingerprints everything that can change a result: the engine version and every
+// setting except Workers, which never does. Two runs with the same RuleVersion over the same
+// input files must produce the same output hash.
+func (c Config) RuleVersion() string {
+	c.Workers = 0
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%+v", Version, c)))
+	return fmt.Sprintf("%x", sum[:6])
+}

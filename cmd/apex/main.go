@@ -1,6 +1,7 @@
 // Command apex is the reconciliation engine's command-line entry point.
 //
 //	apex ingest -layout custodian-cash-v1 data/small/custodian_cash.csv
+//	apex run
 //	apex eval -data data/small
 package main
 
@@ -31,6 +32,8 @@ func main() {
 		err = runIngest(os.Args[2:])
 	case "eval":
 		err = runEval(os.Args[2:])
+	case "run":
+		err = runRecon(os.Args[2:])
 	case "layouts":
 		fmt.Println(strings.Join(ingest.LayoutNames(), "\n"))
 	default:
@@ -43,7 +46,10 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: apex ingest -layout NAME FILE...\n       apex layouts")
+	fmt.Fprintln(os.Stderr, `usage: apex ingest -layout NAME FILE...
+       apex run [-files IDS]
+       apex eval -data DIR
+       apex layouts`)
 	os.Exit(2)
 }
 

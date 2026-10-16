@@ -22,6 +22,7 @@ difference into a break an operations analyst can resolve.
 | Ingestion (`internal/ingest`, `cmd/apex`) | Done: layouts per source, row validation, file hashing, COPY loading |
 | Matching engine (`internal/match`) | Exact, tolerance and N-to-M phases done; fuzzy next |
 | Break classification (`match.Classify`) | Done: six categories with a reason per break, 99.8–100% accurate |
+| Stored runs (`internal/recon`, `apex run`) | Done: runs, matches, breaks and their audit events saved in one transaction; 770k rows in 17 s |
 | Evaluation (`internal/eval`, `apex eval`) | Done: scores runs against ground truth, CI quality gate |
 | Position reconciliation | Planned |
 | API, SSE and UI | Planned |
@@ -37,6 +38,7 @@ make db-test        # audit rule tests in SQL
 make check          # go vet, go test -race, generator tests
 make gen            # data/small: about 22k cash rows with truth files
 make load           # ingest data/small into Postgres
+make run            # reconcile everything loaded and store the run
 make test-int       # tests against generated data and the database
 make eval           # match data/small and score it against the truth file
 ```
