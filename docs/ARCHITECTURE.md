@@ -4,6 +4,9 @@ APEX reconciles two views of the same economic reality, the internal ledger (boo
 custodian (the bank holding the assets), and reports every difference as a *break* that an operations
 analyst can resolve.
 
+This page describes the design as it stands. Why each part was chosen over the alternatives is in
+the [decision records](adr/README.md).
+
 Two properties shape every decision below:
 
 1. **Determinism.** The same inputs, rule version and configuration must always produce byte-identical

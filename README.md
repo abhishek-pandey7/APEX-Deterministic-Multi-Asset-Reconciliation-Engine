@@ -110,5 +110,6 @@ docs/               architecture and algorithm research
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md): system design, stack, numeric representation, determinism rules
+- [Decision records](docs/adr/README.md): every architectural choice, the alternatives rejected, and why
 - [Algorithms](docs/ALGORITHMS.md): blocking, assignment, subset-sum, Fellegi–Sunter, evaluation, with references
 - [Generator](tools/apexgen/README.md): scenarios and output files
